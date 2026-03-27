@@ -27,7 +27,7 @@ import torchvision.transforms as T
 
 
 class ChestXRayDataset(Dataset):
-    def __init__(self, split_dir: Path, transform=None):
+    def __init__(self, split_dir: Path, transform=None, isPneu=True):
         """
         Args:
             split_dir: Path like data/chest_xray/train
@@ -35,11 +35,15 @@ class ChestXRayDataset(Dataset):
         """
         self.split_dir = split_dir
         self.transform = transform
-
         self.class_to_idx = {
             "NORMAL": 0,
             "PNEUMONIA": 1,
         }
+        if not isPneu:
+            self.class_to_idx = {
+                "NORMAL": 0,
+                "CARDIOMEGALY": 1,
+            }
 
         self.samples: List[Tuple[Path, int]] = []
         self._index_images()
@@ -81,10 +85,10 @@ class ChestXRayDataset(Dataset):
 
 
 class HW4DataLoader:
-    def __init__(self):
+    def __init__(self, filename):
         self.homework_dir = Path(__file__).resolve().parent.parent
         self.data_dir = self.homework_dir / "data"
-        self.dataset_dir = self.data_dir / "chest_xray"
+        self.dataset_dir = self.data_dir / filename
 
     def _check_dataset_exists(self) -> None:
         if not self.dataset_dir.exists():
@@ -122,6 +126,7 @@ class HW4DataLoader:
         for_cnn: bool = True,
         batch_size: int = 32,
         num_workers: int = 0,
+        isPneu = True
     ) -> DataLoader:
         """
         Load the Chest X-Ray dataset.
@@ -129,12 +134,17 @@ class HW4DataLoader:
         self._check_dataset_exists()
 
         split_dir = self.dataset_dir / split
+        #print(split_dir)
         if not split_dir.exists():
             raise FileNotFoundError(f"Expected split folder not found: {split_dir}")
 
         transform = self._augment_data_cnn() if for_cnn else self._augment_data_fcn()
-        dataset = ChestXRayDataset(split_dir=split_dir, transform=transform)
-
+        
+        dataset = None
+        if isPneu:
+            dataset = ChestXRayDataset(split_dir=split_dir, transform=transform)
+        else:
+            dataset = ChestXRayDataset(split_dir=split_dir, transform=transform, isPneu = False)
         return DataLoader(
             dataset,
             batch_size=batch_size,

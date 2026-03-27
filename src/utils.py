@@ -4,12 +4,45 @@ import seaborn as sns
 from collections import Counter
 
 # TODO: implement confusion matrix plotting
-def plot_confusion_matrix(cm, class_names=["Normal", "Pneumonia"]):
-    pass
+def plot_confusion_matrix(cm, title = "Default", class_names=["Normal", "Pneumonia"]):
+    sns.heatmap(cm, cmap = "Blues", xticklabels= class_names, yticklabels= class_names)
+    plt.title(title)
+    plt.xlabel("Actual")
+    plt.ylabel("Predicted")
+    plt.show()
 
 # TODO: implement activation visualization
-def visualize_activations(model, input_tensor, layer_name='conv1'):
-    pass
+def visualize_activations(model, input_tensor, layer_name='cnn.0'):
+    l_name, number = layer_name.split(".")
+    input_tensor = input_tensor.to("cpu")
+    model = model.to("cpu")
+    layer = getattr(model, l_name)[int(number)]
+    activation = {}
+    def activat(module, input, output):
+        activation[layer_name] = output.detach().cpu()
+    handle = layer.register_forward_hook(activat)
+    model.eval()
+    with torch.no_grad():
+        model(input_tensor)
+    handle.remove()
+    act = activation[layer_name]
+    feature_maps = act[0]
+    num_channels = feature_maps.shape[0]
+    cols = 4
+    rows = (num_channels-1) // cols + 1
+
+    plt.figure(figsize=(12, 3 * rows))
+    for i in range(num_channels):
+        plt.subplot(rows, cols, i + 1)
+        plt.imshow(feature_maps[i], cmap="gray")
+        plt.title(f"Ch {i}")
+        plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+    return act
+
 
 def plot_class_distribution(loader, title="Class Distribution"):
     labels = []
